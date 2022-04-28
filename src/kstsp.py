@@ -5,7 +5,7 @@ import math
 from sys import argv
 
 # Read
-def read_coords(qtd: int) -> tuple[list[int],list[dict]]:
+def read_coords(qtd):
     coordinates = [ [], [] ]
     capitals = []
     with open("coord", "r", encoding="utf-8") as f:
@@ -27,7 +27,7 @@ def read_coords(qtd: int) -> tuple[list[int],list[dict]]:
 
     return (capitals,dist)
 
-def gurobi(capitals: list[int], dist: list[dict], lagrange: list[int] | None) -> gp.Model:
+def gurobi(capitals, dist, lagrange):
     # tested with Python 3.7 & Gurobi 9.0.0
     m = gp.Model()
 
@@ -88,9 +88,9 @@ def gurobi(capitals: list[int], dist: list[dict], lagrange: list[int] | None) ->
         tour = subtour(selected)
         assert len(tour) == len(capitals)
 
-    return m
+    return m.objVal
 
 
 if __name__ == "__main__":
-    capitals, dist = read_coords()
+    capitals, dist = read_coords(int(argv[1]))
     gurobi(capitals, dist, None)
