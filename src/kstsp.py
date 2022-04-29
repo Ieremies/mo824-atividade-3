@@ -43,7 +43,7 @@ def gurobi(capitals, dist, lagrange, upper_bound):
     for i in range(2):
         for k in dist[i].keys():
             obj.add(vars[i][k]*dist[i][k])
-            obj.add(lagrange[i][k]*(dup[k] - vars[i][k]))
+            obj.add(lagrange[i][k]*(vars[i][k] - dup[k]))
     m.setObjective(obj, GRB.MINIMIZE)
 
     # Symmetric direction: Copy the object
@@ -55,7 +55,7 @@ def gurobi(capitals, dist, lagrange, upper_bound):
     m.addConstrs(vars[i].sum(c, '*') == 2 for c in capitals for i in range(2))
 
     # Edge duplication restrains
-    #m.addConstrs(vars[i][k] >= dup[k] for k in dist[0].keys() for i in range(2))
+    # m.addConstrs(vars[i][k] >= dup[k] for k in dist[0].keys() for i in range(2))
     m.addConstr(dup.sum("*") >= int(argv[2]))
 
     # Callback - use lazy constraints to eliminate sub-tours

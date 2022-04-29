@@ -3,7 +3,8 @@ import heuristic
 from sys import argv
 from math import sqrt
 
-pi = (1 + sqrt(5))/2
+# pi = (1 + sqrt(5))/2
+pi = 2
 
 def subgradient(x, d):
     """Função responsável por calcular o subgradiente.
@@ -20,9 +21,9 @@ def subgradient(x, d):
     list[dict]
         Para cada tuor i, um dicionário contendo o subgradiente para cada aresta.
     """
-    return [ {e: d[e].getAttr("x") - x_i[e].getAttr("x") for e in d.keys()} for x_i in x ]
+    return [ {e: x_i[e].getAttr("x") - d[e].getAttr("x") for e in d.keys()} for x_i in x ]
 
-def passo(pi, upper, lower, subgradient):
+def passo(pi, upper, lower, subg):
     """Calcula o tamanho escalar do passo alpha.
 
     Segue a fórmula \pi \frac{upper - lower}{\sum subgrad^2}.
@@ -44,7 +45,7 @@ def passo(pi, upper, lower, subgradient):
         Passo a ser usado para a próxima interação de lambda.
     """
     sum_subgradients = 0
-    for t in subgradient:
+    for t in subg:
         for e in t.values():
             sum_subgradients += e**2
     return pi * ((upper - lower) / sum_subgradients)
@@ -57,12 +58,12 @@ if __name__ == "__main__":
     upper = heuristic.heuristic(capitals=capitals, dist=dist, k=int(argv[2]))
     gurobi_model = kstsp.gurobi(capitals, dist, lagrange, upper)
 
-    #print(gurobi_model._vars)
-    #exit()
     for i in range(50):
         print(f"Interação {i}, upper {upper}, lower {gurobi_model.objVal}.")
-        print(f"Penalidades: {lagrange}\n")
         subg = subgradient(gurobi_model._vars, gurobi_model._dup)
         alpha = passo(pi, upper, gurobi_model.objVal, subg)
+        # print(alpha)
         lagrange = [ {e : max(lagrange[t][e] + alpha * subg[t][e], 0.0) for e in subg[t].keys()} for t in range(2) ]
         gurobi_model = kstsp.gurobi(capitals, dist, lagrange, upper)
+
+        pi = pi * 0.9
