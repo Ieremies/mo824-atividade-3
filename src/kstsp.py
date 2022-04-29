@@ -27,13 +27,24 @@ def read_coords(qtd):
 
     return (capitals,dist)
 
-def gurobi(capitals, dist, lagrange):
-    # tested with Python 3.7 & Gurobi 9.0.0
+def gurobi(capitals, dist, lagrange, upper_bound):
     m = gp.Model()
+    m.modelSense = GRB.MINIMIZE
+    #m.setParam('OutputFlag', False) # turns off solver chatter
 
     # Variables: is city 'i' adjacent to city 'j' on the tour?
-    vars = [m.addVars(dist[i].keys(), obj=dist[i], vtype=GRB.BINARY, name=f'x_{i}') for i in range(2)]
+    vars = [m.addVars(dist[i].keys(), vtype=GRB.BINARY, name=f'x_{i}') for i in range(2)]
     dup = m.addVars(dist[0].keys(), vtype=GRB.BINARY, name="D")
+
+    m.update()
+
+    # Set the objective function
+    obj = gp.LinExpr()
+    for i in range(2):
+        for k in dist[i].keys():
+            obj.add(vars[i][k]*dist[i][k])
+            obj.add(lagrange[i][k]*(dup[k] - vars[i][k]))
+    m.setObjective(obj, GRB.MINIMIZE)
 
     # Symmetric direction: Copy the object
     for k in range(2):
@@ -44,7 +55,7 @@ def gurobi(capitals, dist, lagrange):
     m.addConstrs(vars[i].sum(c, '*') == 2 for c in capitals for i in range(2))
 
     # Edge duplication restrains
-    m.addConstrs(vars[i][k] >= dup[k] for k in dist[0].keys() for i in range(2))
+    #m.addConstrs(vars[i][k] >= dup[k] for k in dist[0].keys() for i in range(2))
     m.addConstr(dup.sum("*") >= int(argv[2]))
 
     # Callback - use lazy constraints to eliminate sub-tours
@@ -78,19 +89,9 @@ def gurobi(capitals, dist, lagrange):
 
 
     m._vars = vars
+    m._dup = dup
     m.Params.lazyConstraints = 1
     m.optimize(subtourelim)
 
-    # Retrieve solution
-    for t in range(2):
-        vals = m.getAttr('x', vars[0])
-        selected = gp.tuplelist((i, j) for i, j in vals.keys() if vals[i, j] > 0.5)
-        tour = subtour(selected)
-        assert len(tour) == len(capitals)
+    return m
 
-    return m.objVal
-
-
-if __name__ == "__main__":
-    capitals, dist = read_coords(int(argv[1]))
-    gurobi(capitals, dist, None)
