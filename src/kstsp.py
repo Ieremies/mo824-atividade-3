@@ -30,7 +30,7 @@ def read_coords(qtd):
 def gurobi(capitals, dist, lagrange, upper_bound):
     m = gp.Model()
     m.modelSense = GRB.MINIMIZE
-    #m.setParam('OutputFlag', False) # turns off solver chatter
+    m.setParam('OutputFlag', False) # turns off solver chatter
 
     # Variables: is city 'i' adjacent to city 'j' on the tour?
     vars = [m.addVars(dist[i].keys(), vtype=GRB.BINARY, name=f'x_{i}') for i in range(2)]

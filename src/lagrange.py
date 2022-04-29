@@ -20,7 +20,7 @@ def subgradient(x, d):
     list[dict]
         Para cada tuor i, um dicionário contendo o subgradiente para cada aresta.
     """
-    return [ {e: d[e] - x_i[e] for e in d.keys()} for x_i in x ]
+    return [ {e: d[e].getAttr("x") - x_i[e].getAttr("x") for e in d.keys()} for x_i in x ]
 
 def passo(pi, upper, lower, subgradient):
     """Calcula o tamanho escalar do passo alpha.
@@ -43,7 +43,10 @@ def passo(pi, upper, lower, subgradient):
     float
         Passo a ser usado para a próxima interação de lambda.
     """
-    sum_subgradients = sum( [ sum([ e**2 for e in t.values() ]) for t in subgradient] )
+    sum_subgradients = 0
+    for t in subgradient:
+        for e in t.values():
+            sum_subgradients += e**2
     return pi * ((upper - lower) / sum_subgradients)
 
 
@@ -56,8 +59,9 @@ if __name__ == "__main__":
 
     #print(gurobi_model._vars)
     #exit()
-    for i in range(5):
+    for i in range(50):
         print(f"Interação {i}, upper {upper}, lower {gurobi_model.objVal}.")
+        print(f"Penalidades: {lagrange}\n")
         subg = subgradient(gurobi_model._vars, gurobi_model._dup)
         alpha = passo(pi, upper, gurobi_model.objVal, subg)
         lagrange = [ {e : max(lagrange[t][e] + alpha * subg[t][e], 0.0) for e in subg[t].keys()} for t in range(2) ]
