@@ -65,9 +65,7 @@ if __name__ == "__main__":
 
     i = 0
     while elapsed < 30*60:
-        print(f"Interação {i}, time {elapsed}, lower {gurobi_model.objVal}")
-
-        i += 1
+        print(f"Interação; {i}; time; {elapsed}; lower; {gurobi_model.objVal};")
 
         subg = subgradient(gurobi_model._vars, gurobi_model._dup)
         alpha = passo(pi, upper, gurobi_model.objVal, subg)
@@ -76,3 +74,4 @@ if __name__ == "__main__":
         gurobi_model = kstsp.gurobi(capitals, dist, lagrange, upper)
 
         elapsed = time.time() - start
+        i += 1
