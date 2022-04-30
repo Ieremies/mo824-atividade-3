@@ -1,11 +1,12 @@
-import gurobipy as gp
-from gurobipy import GRB
-from itertools import combinations
 import math
+from itertools import combinations
 from sys import argv
 
-# Read
+import gurobipy as gp
+from gurobipy import GRB
+
 def read_coords(qtd):
+
     coordinates = [ [], [] ]
     capitals = []
     with open("coord", "r", encoding="utf-8") as f:
@@ -16,6 +17,13 @@ def read_coords(qtd):
             coordinates[1].append((int(linha[2]), int(linha[3])))
 
     def distance(city1, city2, tuor):
+        """Calcular a distância entre duas cidades em um tuor específico.
+
+        Rerturns
+        --------
+        float
+            Distância euclidiana entre a city1 e a city2 no tuor passado.
+        """
         c1 = coordinates[tuor][city1]
         c2 = coordinates[tuor][city2]
         diff = (c1[0]-c2[0], c1[1]-c2[1])
@@ -31,31 +39,33 @@ def gurobi(capitals, dist, lagrange, upper_bound):
     m = gp.Model()
     m.modelSense = GRB.MINIMIZE
     m.setParam('OutputFlag', False) # turns off solver chatter
+    m.setParam('Cutoff', upper_bound)
 
     # Variables: is city 'i' adjacent to city 'j' on the tour?
-    vars = [m.addVars(dist[i].keys(), vtype=GRB.BINARY, name=f'x_{i}') for i in range(2)]
-    dup = m.addVars(dist[0].keys(), vtype=GRB.BINARY, name="D")
+    vars = [m.addVars(dist[i], vtype=GRB.BINARY, name=f'x_{i}') for i in range(2)]
+    dup = m.addVars(dist[0], vtype=GRB.BINARY, name="D")
 
     m.update()
 
-    # Set the objective function
-    obj = gp.LinExpr()
-    for i in range(2):
-        for k in dist[i].keys():
-            obj.add(vars[i][k]*dist[i][k])
-            obj.add(lagrange[i][k]*(vars[i][k] - dup[k]))
-    m.setObjective(obj, GRB.MINIMIZE)
+    #============================ ATIVIDADE 3 =================================#
+    # Set the objective function                                               #
+    obj = gp.LinExpr()                                                         #
+    for i in range(2):                                                         #
+        for k in dist[i]:                                                      #
+            obj.add(vars[i][k]*dist[i][k])                                     #
+            obj.add(lagrange[i][k]*(dup[k] - vars[i][k]))                      #
+    m.setObjective(obj, GRB.MINIMIZE)                                          #
+    #==========================================================================#
 
     # Symmetric direction: Copy the object
     for k in range(2):
-        for i, j in vars[k].keys():
+        for i, j in vars[k]:
             vars[k][j, i] = vars[k][i, j]  # edge in opposite direction
-
     # Constraints: two edges incident to each city
     m.addConstrs(vars[i].sum(c, '*') == 2 for c in capitals for i in range(2))
 
     # Edge duplication restrains
-    # m.addConstrs(vars[i][k] >= dup[k] for k in dist[0].keys() for i in range(2))
+    # m.addConstrs(vars[i][k] >= dup[k] for k in dist[0] for i in range(2))
     m.addConstr(dup.sum("*") >= int(argv[2]))
 
     # Callback - use lazy constraints to eliminate sub-tours
@@ -64,7 +74,7 @@ def gurobi(capitals, dist, lagrange, upper_bound):
             for t in range(2):
                 # make a list of edges selected in the solution
                 vals = model.cbGetSolution(model._vars[t])
-                selected = gp.tuplelist((i, j) for i, j in model._vars[t].keys() if vals[i, j] > 0.5)
+                selected = gp.tuplelist((i, j) for i, j in model._vars[t] if vals[i, j] > 0.5)
                 # find the shortest cycle in the selected edge list
                 tour = subtour(selected)
                 if len(tour) < len(capitals):

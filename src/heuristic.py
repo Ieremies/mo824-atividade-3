@@ -32,13 +32,15 @@ def heuristic(capitals, dist, k):
 
     # While there is a capital to be visited
     while len(not_visited) > len(capitals) - k:
+        # print(len(not_visited), total_dist)
         # Find the closest capital
         closest_capital = not_visited[0]
         closest_capital_dist = inf
 
         for c in not_visited:
-            distancia_atual_c = (dist[0][atual, c] if (atual, c) in dist[0].keys() else dist[0][c, atual]
-                                 + dist[1][atual, c] if (atual, c) in dist[1].keys() else dist[1][c, atual])
+            a = dist[0][atual, c] if (atual, c) in dist[0].keys() else dist[0][c, atual]
+            b = dist[1][atual, c] if (atual, c) in dist[1].keys() else dist[1][c, atual]
+            distancia_atual_c = a + b
             if (distancia_atual_c < closest_capital_dist):
                 closest_capital = c
                 closest_capital_dist = distancia_atual_c

@@ -1,10 +1,11 @@
-import kstsp
-import heuristic
-from sys import argv
+import time
 from math import sqrt
+from sys import argv
 
-# pi = (1 + sqrt(5))/2
-pi = 2
+import heuristic
+import kstsp
+
+pi = (1 + sqrt(5))/2
 
 def subgradient(x, d):
     """Função responsável por calcular o subgradiente.
@@ -21,7 +22,7 @@ def subgradient(x, d):
     list[dict]
         Para cada tuor i, um dicionário contendo o subgradiente para cada aresta.
     """
-    return [ {e: x_i[e].getAttr("x") - d[e].getAttr("x") for e in d.keys()} for x_i in x ]
+    return [ {e: d[e].getAttr("x") - x_i[e].getAttr("x") for e in d} for x_i in x ]
 
 def passo(pi, upper, lower, subg):
     """Calcula o tamanho escalar do passo alpha.
@@ -44,26 +45,34 @@ def passo(pi, upper, lower, subg):
     float
         Passo a ser usado para a próxima interação de lambda.
     """
+
     sum_subgradients = 0
     for t in subg:
-        for e in t.values():
-            sum_subgradients += e**2
+        sum_subgradients += sum([e**2 for e in t.values()])
     return pi * ((upper - lower) / sum_subgradients)
 
 
 if __name__ == "__main__":
     capitals, dist = kstsp.read_coords(int(argv[1]))
-    lagrange = [ {e: 0 for e in dist[t].keys()} for t in range(2) ]
+    lagrange = [ {e: 0 for e in dist[t]} for t in range(2) ]
 
-    upper = heuristic.heuristic(capitals=capitals, dist=dist, k=int(argv[2]))
+    upper = heuristic.heuristic(capitals, dist, int(argv[2]))
+    print(f"Upper bound heuristic:{upper}")
     gurobi_model = kstsp.gurobi(capitals, dist, lagrange, upper)
 
-    for i in range(50):
-        print(f"Interação {i}, upper {upper}, lower {gurobi_model.objVal}.")
+    start = time.time()
+    elapsed = 0
+
+    i = 0
+    while elapsed < 30*60:
+        print(f"Interação {i}, time {elapsed}, lower {gurobi_model.objVal}")
+
+        i += 1
+
         subg = subgradient(gurobi_model._vars, gurobi_model._dup)
         alpha = passo(pi, upper, gurobi_model.objVal, subg)
-        # print(alpha)
-        lagrange = [ {e : max(lagrange[t][e] + alpha * subg[t][e], 0.0) for e in subg[t].keys()} for t in range(2) ]
+
+        lagrange = [ {e : max(lagrange[t][e] + alpha * subg[t][e], 0.0) for e in subg[t]} for t in range(2) ]
         gurobi_model = kstsp.gurobi(capitals, dist, lagrange, upper)
 
-        pi = pi * 0.9
+        elapsed = time.time() - start
